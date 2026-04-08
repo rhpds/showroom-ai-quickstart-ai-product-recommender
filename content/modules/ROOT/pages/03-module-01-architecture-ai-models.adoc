@@ -1,0 +1,335 @@
+= Module 1: Architecture and AI models
+:source-highlighter: rouge
+:toc: macro
+:toclevels: 1
+
+Your manager at Kaleido just assigned you to build an AI-driven product recommendation system. "Our customers are overwhelmed by choice," she says. "We need intelligent recommendations that understand what they're looking for, and we need review summaries that help them decide quickly."
+
+Kaleido needs to provide intelligent and informative recommendations for a diverse product line through an intuitive user interface. You've heard that Red Hat OpenShift AI can help solve this challenge with integrated tools for model development, training, and deployment -- but you need to understand the architecture and model choices first.
+
+In this module, you'll explore how different AI models work together to power an intelligent product recommender.
+
+== Learning objectives
+
+By the end of this module, you'll be able to:
+
+* Identify the key components of an AI-driven product recommender architecture
+* Explain the role of different transformer model types in the recommendation system
+* Understand how embedding models enable semantic search and recommendations
+* Recognize when to use encoder-only versus decoder-only LLM architectures
+
+== Exercise 1: Explore the product recommender architecture
+
+You need to understand how Kaleido's AI recommendation system works end-to-end. Let's start by exploring the deployed application and examining the architectural components that make intelligent recommendations possible.
+
+The product recommender system integrates multiple AI technologies -- each serving a specific purpose. Understanding this architecture will help you make informed decisions about which components to use for different tasks.
+
+. Access the product recommender application.
++
+Open your web browser and navigate to the deployed application (your instructor will provide the URL).
++
+You'll see a landing page with personalized product recommendations and a search interface.
+
+. Explore the recommendation features.
++
+Notice the different ways the application helps customers discover products:
++
+* **Personalized recommendations** -- suggested products based on user preferences
+* **Text search** -- find products by typing descriptions
+* **Image search** -- upload product images to find similar items
+* **AI-generated review summaries** -- condensed insights from customer reviews
++
+Each of these capabilities relies on different AI models working together.
+
+. Examine the architecture diagram.
++
+The following diagram shows how OpenShift AI components integrate to power the product recommender:
++
+image::figure-1-product-recommender-ai-components.png[Product Recommender AI components showing LLMs, inference servers, feature store, and pipeline orchestration,link=self,window=blank,width=800,title="Product Recommender AI Components"]
++
+The architecture includes 4 key technology areas:
++
+* **LLMs and machine learning models** -- 4 different models for embeddings, generation, and recommendations
+* **Inference servers** -- scalable model serving with continuous batching
+* **Feature store** -- consistent data management across training and inference
+* **Model training pipeline orchestration** -- automated workflows with Kubeflow Pipelines
+
+=== Verify
+
+Let's confirm you can access the application and identify its AI-powered features.
+
+Answer these questions based on your exploration:
+
+✓ Can you see personalized product recommendations on the landing page?
+
+✓ Can you find the search bar that accepts text queries?
+
+✓ Can you locate the AI summarize button on product detail pages?
+
+✓ Can you identify which architectural components handle each feature?
+
+Expected observations:
+
+* Landing page shows "Recommended for You" section with product cards
+* Search interface supports both text input and image upload
+* Product pages display reviews with an "AI Summarize" button
+* Architecture diagram maps features to specific AI components
+
+== Exercise 2: Examine the AI models and their roles
+
+Now that you understand the overall architecture, let's dive deeper into the 4 AI models that power different capabilities. Each model type serves a specific purpose based on its architecture and training.
+
+Understanding when to use encoder-only, decoder-only, or dual-encoder models is critical for building effective AI applications.
+
+=== The 4 models in the product recommender
+
+The AI quickstart uses these models:
+
+|===
+|Model |Function |Architecture Type
+
+|BAAI/BGE-small-en-v1.5
+|Converts product descriptions and text to embeddings for semantic search
+|Encoder-only (text embedding)
+
+|openai/clip-vit-base-patch32
+|Embeds product images to enable image-based search
+|Encoder-only (image embedding)
+
+|Llama 3.1 8B
+|Generates product review summaries from customer reviews
+|Decoder-only (generative LLM)
+
+|Two-Tower Recommender Model
+|Provides personalized product recommendations
+|Dual-encoder (custom recommendation model)
+|===
+
+=== Understanding model architecture choices
+
+When building AI applications, engineers must consider the **task** and **data type** each model supports.
+
+**Encoder-only models** (BGE, CLIP):
+
+* Convert inputs (text or images) to numeric representations called **embeddings**
+* Embeddings are lists of numbers that capture semantic meaning
+* Similar items have embeddings that are close together in vector space
+* Used for search, similarity, and classification tasks
+
+**Decoder-only models** (Llama 3.1):
+
+* Generate new tokens sequentially in response to instructions
+* Take a prompt and produce human-readable text
+* Used for summarization, question answering, and content generation
+
+**Dual-encoder models** (Two-Tower):
+
+* Train 2 separate encoders (one for users, one for products)
+* Create embeddings in a **shared space** where distance reflects interaction strength
+* Enable recommendations by finding nearest product embeddings to user embeddings
+
+=== How embeddings enable semantic search
+
+Embeddings are the foundation of modern AI search and recommendations. Here's why they matter:
+
+Traditional keyword search matches exact words -- searching for "thin remote controls" won't find products described as "slim remotes." Embedding models understand that these phrases mean the same thing because they learned semantic relationships during training.
+
+The BGE-small model converts text to 384-dimensional vectors. Each dimension captures a different aspect of meaning. When you search for a product, the system:
+
+. Converts your search text to a 384-dimensional embedding
+. Compares it to pre-computed embeddings for all products in the catalog
+. Returns products with the closest (most similar) embeddings
+
+This is why the application can find relevant products even when your search terms don't exactly match the product description.
+
+**Mathematical insight**:
+
+Embeddings form an **embedding space** where vector arithmetic has semantic meaning. For example:
+
+----
+Vector('Trail Hiker's Backpack') + Vector('Upgrade') ≈ Vector('Mountaineer's Backpack')
+----
+
+Neural networks learn these embedding spaces through **contrastive learning** -- processing pairs of similar and dissimilar inputs until related items cluster together.
+
+=== Why different architectures matter
+
+You might wonder: "Why not use one model for everything?"
+
+The architecture determines what a model can do efficiently:
+
+* **Encoder-only models** excel at understanding and representing inputs but can't generate new content. They're fast and efficient for search.
+* **Decoder-only models** excel at generating coherent text but are slower and use more resources. They're essential for summarization.
+* **Dual-encoder models** learn coordinated representations for 2 different types of entities (users and products), enabling personalized recommendations.
+
+Choosing the right architecture for each task optimizes both performance and resource usage.
+
+=== Verify
+
+Check your understanding of model types and their roles:
+
+Which model would you use for each task?
+
+. Finding products similar to an uploaded image → **CLIP (image encoder)**
+. Generating a summary of 100 product reviews → **Llama 3.1 (decoder-only LLM)**
+. Finding products semantically similar to "portable power bank" → **BGE (text encoder)**
+. Recommending products based on user purchase history → **Two-Tower (dual-encoder)**
+
+Expected understanding:
+
+✓ Encoder models create embeddings for search and similarity
+
+✓ Decoder models generate new text from prompts
+
+✓ Dual-encoder models create coordinated embeddings for 2 entity types
+
+✓ Architecture choice depends on the task requirements
+
+== Exercise 3: Review the FEAST feature store
+
+AI models only learn from data, so the features used during training must match those used during inference. Otherwise, accuracy suffers through a phenomenon called **training-serving skew**.
+
+FEAST is a feature store that provides a single source of truth for feature definitions, ensuring consistency across the ML lifecycle.
+
+=== Why feature stores matter
+
+Consider this scenario:
+
+During training, your recommendation model learns from product descriptions stored in a PostgreSQL database. But 3 months later, the data team migrates to a new schema and changes how descriptions are formatted. Your model still expects the old format, causing accuracy to drop.
+
+Feature stores prevent this by:
+
+* **Versioning features** -- changes don't break existing applications
+* **Unified Python API** -- consistent access regardless of underlying storage
+* **Data validation** -- ensures features match expected schemas
+
+=== FEAST architecture in the product recommender
+
+The product recommender uses FEAST with PostgreSQL + pgvector for feature storage:
+
+* **Offline store** (Parquet files) -- historical data for model training
+* **Online store** (PostgreSQL with pgvector) -- low-latency feature retrieval for inference
+
+image::figure-2-sample-feast-api-usage-pattern.png[Sample FEAST API usage showing data source, feature view, and FeatureService,link=self,window=blank,width=700,title="Sample FEAST API Usage Pattern"]
+
+The workflow is:
+
+. Define a **data source** (Parquet file or live database)
+. Create a **feature view** selecting specific columns
+. Build a **FeatureService** from one or more views
+. Client code retrieves features through a consistent API
+
+=== How FEAST prevents training-serving skew
+
+When you define features in FEAST:
+
+* Training code reads from the offline store
+* Inference code reads from the online store
+* Both use the same feature definitions and transformations
+* Feature versioning ensures backward compatibility
+
+This guarantees that the model sees the same data structure in production that it saw during training.
+
+=== Verify
+
+Review the FEAST configuration and verify your understanding:
+
+Expected configuration elements:
+
+* **Data sources** defined for products, users, and interactions
+* **Feature views** selecting relevant columns (product name, description, category, price, ratings)
+* **FeatureService** combining views for model consumption
+* **Online/offline stores** configured for PostgreSQL and Parquet
+
+Questions to confirm understanding:
+
+✓ What problem does FEAST solve? → **Training-serving skew**
+
+✓ What are the 2 storage types? → **Offline (historical) and online (inference)**
+
+✓ How do clients access features? → **Through FeatureService API**
+
+✓ Why version features? → **Prevent breaking changes to models in production**
+
+== Troubleshooting
+
+**Issue**: Cannot access product recommender application
+
+**Solution**:
+
+. Verify the URL is correct
+. Check that pods are running: `oc get pods`
+. Review route status: `oc get routes`
+. Check application logs: `oc logs <pod-name>`
+
+**Issue**: Search results seem irrelevant or incorrect
+
+**Solution**:
+
+. Embeddings may not be loaded -- check if pipeline has run
+. Verify feature store contains product embeddings
+. Review pipeline logs for embedding generation errors
+. Confirm BGE model is deployed and accessible
+
+**Issue**: AI summarize button doesn't work
+
+**Solution**:
+
+. Check if Llama model is deployed: `oc get inferenceservice`
+. Verify model endpoint is accessible
+. Check if product has at least 4 reviews (minimum for summarization)
+. Review backend logs for LLM connection errors
+
+**Issue**: Understanding embedding dimensions
+
+**Solution**:
+
+. Embedding dimensions are fixed by model architecture
+. BGE-small uses 384 dimensions
+. More dimensions capture more nuance but require more storage/compute
+. Don't try to change dimensions -- they're learned during pre-training
+
+**Issue**: Confused about when to use encoder vs decoder models
+
+**Solution**:
+
+. Need to search or compare items? → **Use encoder** (creates embeddings)
+. Need to generate new text? → **Use decoder** (LLM)
+. Need coordinated representations for 2 entities? → **Use dual-encoder**
+. Reference the model table in Exercise 2 for examples
+
+== Learning outcomes
+
+By completing this module, you should now understand:
+
+* ✓ How AI-driven product recommenders combine multiple model types to deliver different capabilities
+* ✓ The architectural role of inference servers, feature stores, and pipeline orchestration in OpenShift AI
+* ✓ When to choose encoder-only models (embeddings), decoder-only models (generation), or dual-encoders (recommendations)
+* ✓ How embedding models enable semantic search by representing text and images as vectors in high-dimensional space
+* ✓ Why FEAST feature stores are critical for preventing training-serving skew in production ML systems
+
+== Module summary
+
+You've successfully explored the architecture and AI models that power Kaleido's product recommender.
+
+**What you accomplished for Kaleido:**
+
+* Explored an AI-driven product recommender with semantic search, image search, and LLM-generated summaries
+* Identified 4 different AI model types and understood their specific roles
+* Learned how embedding models enable intelligent search beyond keyword matching
+* Discovered how FEAST prevents data consistency issues between training and production
+
+**Business impact realized:**
+
+* **Intelligent product discovery** -- embeddings enable semantic search that understands customer intent
+* **Scalable architecture** -- OpenShift AI components work together for enterprise-grade AI applications
+* **Production reliability** -- feature stores ensure models work correctly when deployed
+* **Informed model selection** -- understanding architectures enables choosing the right tool for each task
+
+**Your journey progress:**
+
+You now understand the foundational architecture and can explain why different AI model types are needed for different capabilities. This knowledge is essential for building and operating production AI systems.
+
+**Next steps:**
+
+Module 2 will show you how to build and monitor the Kubeflow Pipeline that trains the two-tower recommendation model and generates product embeddings using FEAST.

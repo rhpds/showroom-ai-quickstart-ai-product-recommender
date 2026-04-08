@@ -1,0 +1,186 @@
+= Workshop details
+:toc:
+:toc-placement: preamble
+:icons: font
+
+== Timing and schedule
+
+=== Full workshop (1 hour)
+
+* **Module 1**: Architecture and AI models (15-20 minutes)
+* **Module 2**: Feature store and training pipeline (20-25 minutes)
+* **Module 3**: Inference server and LLM integration (15-20 minutes)
+
+=== Self-paced learning
+
+This workshop is designed for self-paced learning. You can:
+
+* Complete all modules in sequence for the full experience
+* Focus on specific modules based on your interests
+* Return to review concepts and re-run exercises
+
+== Technical requirements
+
+=== Software versions
+
+* OpenShift 4.20.16
+* Red Hat OpenShift AI 3.30
+* Feast operator 0.59.0
+* KServe v0.15
+* Kubeflow Pipelines 2.5.0
+* LLM: MaaS using qwen model
+* Web browser (Chrome, Firefox, Safari, Edge)
+
+=== Environment access
+
+Participants have access to:
+
+* OpenShift AI environment (provided during workshop)
+* OpenShift web console
+* Jupyter workbenches
+* Kubeflow Pipelines dashboard
+* Deployed AI models and inference endpoints
+
+=== Cluster configuration
+
+* **Cluster type**: Multinode
+* **Access level**: Multi-user
+* **Pre-deployed components**:
+** Red Hat OpenShift AI operators
+** FEAST feature store
+** KServe serving runtime
+** Kubeflow Pipelines server
+** MinIO S3-compatible storage
+
+== Environment setup
+
+=== Pre-workshop checklist
+
+All components are pre-configured and ready to use:
+
+□ **OpenShift AI installed** - Operators and components deployed
+□ **FEAST feature store configured** - Online and offline storage ready
+□ **Kubeflow Pipelines available** - Pipeline server accessible
+□ **Model serving configured** - KServe runtime deployed
+□ **Sample data loaded** - Product and user data available
+
+=== Setup validation
+
+You can verify your environment is ready by accessing:
+
+* OpenShift console: `{openshift_console_url}`
+* Login with credentials: `{user}` / `{password}`
+
+The workshop guides you through exploring these components in each module.
+
+== Module breakdown
+
+=== Module 1: Architecture and AI models (15-20 min)
+
+**Focus**: Understanding the AI-driven product recommender architecture and model selection
+
+**Topics**:
+
+* Product recommender system architecture
+* Transformer model types and use cases
+* Text embeddings with BGE model
+* Image embeddings with CLIP model
+* LLMs for generative tasks
+* Two-tower recommendation model architecture
+
+**Hands-on activities**:
+
+* Explore the deployed product recommender application
+* Examine AI models and their roles in the system
+* Review FEAST feature store configuration
+
+=== Module 2: Feature store and training pipeline (20-25 min)
+
+**Focus**: Building and managing AI training workflows
+
+**Topics**:
+
+* FEAST feature store concepts and benefits
+* Kubeflow Pipelines architecture
+* Two-tower model training workflow
+* Pipeline component development
+* Model training and batch scoring
+* Embedding generation and storage
+
+**Hands-on activities**:
+
+* Explore FEAST feature views and services
+* Review Kubeflow Pipeline definitions
+* Monitor pipeline execution and logs
+* Examine trained model artifacts
+
+=== Module 3: Inference server and LLM integration (15-20 min)
+
+**Focus**: Deploying models for production inference
+
+**Topics**:
+
+* Red Hat inference server capabilities
+* KServe serving runtime
+* Model deployment and scaling
+* LLM integration for review summarization
+* Context window management
+* Production inference patterns
+
+**Hands-on activities**:
+
+* Deploy models with KServe
+* Test product recommendations
+* Generate review summaries with LLM
+* Monitor inference performance
+
+== Troubleshooting guide
+
+=== Common access issues
+
+**Problem**: "Cannot access OpenShift console"
+→ **Solution**: Verify you're using the correct URL from `{openshift_console_url}`. Clear browser cache and try again.
+
+**Problem**: "Login credentials not working"
+→ **Solution**: Ensure you're using `{user}` and `{password}` exactly as provided. Check for extra spaces.
+
+**Problem**: "Showroom interface not loading"
+→ **Solution**: Refresh the browser. If issue persists, try a different browser or incognito mode.
+
+**Problem**: "Cannot see deployed components"
+→ **Solution**: Verify you're in the correct OpenShift project/namespace. Check the project selector in the console.
+
+=== During workshop support
+
+* Screenshots and verification steps are provided throughout
+* Each exercise includes expected outcomes
+* Troubleshooting sections help resolve common issues
+* All components are pre-deployed -- no installation required
+
+== Follow-up resources
+
+=== Next steps for participants
+
+* link:https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0[Red Hat OpenShift AI documentation^] - Complete product documentation
+* link:https://www.redhat.com/en/technologies/cloud-computing/openshift/openshift-ai[OpenShift AI product page^] - Product information and resources
+* link:https://developers.redhat.com/products/red-hat-openshift-ai/overview[Red Hat Developer resources^] - Tutorials and learning paths
+* link:https://github.com/kubeflow/pipelines[Kubeflow Pipelines documentation^] - Pipeline development guides
+
+=== Additional learning paths
+
+* **Intermediate**: Explore custom serving runtimes and model optimization techniques
+* **Advanced**: Build production-grade ML workflows with monitoring and retraining
+* **Certification**: Consider Red Hat Certified Specialist in AI and Machine Learning
+
+== Authors and contributors
+
+**Workshop content**: Based on the Red Hat AI Quickstart: Implementing AI-Driven Product Recommendations and Semantic Search
+
+**Last updated**: April 2026
+
+**Workshop version**: 1.0
+
+**Technical environment**:
+
+* OpenShift 4.20.16
+* Red Hat OpenShift AI 3.30

@@ -1,0 +1,523 @@
+= Module 3: Inference server and LLM integration
+:source-highlighter: rouge
+:toc: macro
+:toclevels: 1
+
+Your manager at Kaleido is impressed with the training pipeline you explored in Module 2. Now she asks: "We've trained the models, but how do we actually serve them to thousands of customers simultaneously? And how do we generate those review summaries in real time?"
+
+Kaleido needs to deploy AI models that handle concurrent requests efficiently while maintaining low latency. You've learned about the Red Hat inference server and KServe, but now you need hands-on experience deploying models for production inference and integrating LLMs for text generation.
+
+In this module, you'll explore how to deploy models with KServe and use LLMs to generate product review summaries.
+
+== Learning objectives
+
+By the end of this module, you'll be able to:
+
+* Explain how the Red Hat inference server uses continuous batching to handle concurrent requests efficiently
+* Deploy models with KServe for scalable production inference
+* Use LLMs to generate product review summaries with proper context window management
+* Understand techniques for handling LLM limitations like context rot and memory constraints
+
+== Exercise 1: Deploy and test the inference server with KServe
+
+You need to understand how Kaleido's trained models are deployed for production use. The Red Hat inference server, powered by KServe, transforms static model files into scalable services that handle thousands of concurrent requests.
+
+Understanding inference server capabilities is essential for deploying models that meet production performance and reliability requirements.
+
+=== Why inference servers matter
+
+ML models are **static collections of numbers** representing learned patterns. To make predictions:
+
+1. Load model weights into memory (can be gigabytes in size)
+2. Run computations over input data (matrix multiplications, activations)
+3. Return predictions or embeddings
+
+A naive approach would:
+
+* Load the model for each request
+* Process one request at a time
+* Unload the model when done
+
+This would be **painfully slow** -- like waiting in a grocery checkout line behind customers with full carts when you only have a few items.
+
+**Inference servers solve this by**:
+
+* **Model persistence** -- load once, keep in memory, serve many requests
+* **Concurrent processing** -- handle multiple requests simultaneously
+* **Efficient batching** -- group requests to maximize hardware utilization
+* **Auto-scaling** -- add/remove instances based on load
+
+=== Continuous batching: The grocery store analogy
+
+OpenShift AI's inference server uses **continuous batching** to optimize throughput:
+
+**Traditional batching** (inefficient):
+
+* Wait for 32 requests to accumulate
+* Process all 32 together as one batch
+* While processing, new requests queue up
+* Result: High latency for requests that arrive just after a batch starts
+
+**Continuous batching** (efficient):
+
+* Process one item from each customer's cart in rotation
+* As new customers arrive, add them to the rotation
+* No request waits for a full batch to accumulate
+* Result: Consistent low latency, high throughput
+
+When paired with **accelerators** (NVIDIA GPUs, Intel Gaudi), continuous batching keeps hardware busy processing different requests in parallel.
+
+=== KServe: Model serving on Kubernetes
+
+**KServe** is a Kubernetes-native framework for model serving that:
+
+* **Standardizes model deployment** -- consistent API across model types
+* **Handles traffic routing** -- canary deployments, A/B testing
+* **Auto-scales inference pods** -- based on request volume
+* **Provides observability** -- metrics, logging, tracing
+
+The Red Hat inference server integrates with KServe to provide:
+
+* **Optimized runtimes** -- vLLM for LLMs, other runtimes for different model types
+* **Quantization** -- reduce model size/memory with minimal accuracy loss
+* **Multi-model serving** -- multiple models on one instance
+
+=== Deployed models in the product recommender
+
+The product recommender deploys these models via KServe:
+
+|===
+|Model |Purpose |Runtime
+
+|Llama 3.1 8B (qwen variant via MaaS)
+|Generate product review summaries
+|vLLM NVIDIA GPU ServingRuntime
+
+|BGE text encoder
+|Create text embeddings for search queries
+|Custom embedding runtime
+
+|CLIP image encoder
+|Create image embeddings for image search
+|Custom embedding runtime
+|===
+
+The two-tower model runs during the **training pipeline** -- recommendations are pre-computed and stored in FEAST, so there's no inference-time model serving for recommendations.
+
+=== How to verify model deployments
+
+Check if models are deployed and ready:
+
+[source,bash,role="execute"]
+----
+oc get inferenceservice
+----
+
+Expected output shows:
+
+* **NAME** -- model identifier
+* **READY** -- True when model loaded and serving
+* **URL** -- inference endpoint
+
+You can test an inference endpoint:
+
+[source,bash,role="execute"]
+----
+curl -X POST https://<model-url>/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input": "portable power bank with fast charging"
+  }'
+----
+
+Expected response:
+
+[source,json]
+----
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "embedding",
+      "embedding": [0.023, -0.015, 0.042, ...],
+      "index": 0
+    }
+  ]
+}
+----
+
+The embedding is a list of 384 numbers representing the semantic meaning of the input text.
+
+=== Verify
+
+Check your understanding of inference servers:
+
+Questions to confirm understanding:
+
+✓ What problem do inference servers solve? → **Efficiently serve models to concurrent requests**
+
+✓ What is continuous batching? → **Processing one item from each request in rotation, like a grocery checkout**
+
+✓ What does KServe provide? → **Kubernetes-native model serving with standardized APIs and auto-scaling**
+
+✓ Why use accelerators (GPUs)? → **Maximize throughput by processing batched requests in parallel**
+
+Expected observations:
+
+* Inference servers keep models in memory for fast serving
+* Continuous batching reduces latency and increases throughput
+* KServe handles deployment, scaling, and routing
+* Model endpoints accept HTTP requests and return predictions/embeddings
+
+== Exercise 2: Generate product review summaries with LLMs
+
+Now let's explore how Kaleido uses the Llama 3.1 LLM to generate product review summaries. This capability helps customers quickly understand product quality without reading hundreds of reviews.
+
+Understanding LLM integration and context window management is essential for production generative AI applications.
+
+=== The product recommender with review summaries
+
+When customers browse products, they see:
+
+image::figure-1-landing-page-shows-recommendations-for-the-logged-in-user.png[Landing page showing personalized product recommendations with search bar for text and image queries,link=self,window=blank,width=800,title="Landing Page with Personalized Recommendations"]
+
+Clicking on a product shows details and reviews:
+
+image::figure-2-product-details-page.png[Product details page showing product image, ratings, reviews, and AI Summarize button,link=self,window=blank,width=800,title="Product Details Page with Reviews"]
+
+The **AI Summarize** button triggers review summarization:
+
+image::figure-3-ai-generated-summary-of-reviews.png[AI-generated summary showing concise paragraph distilling user reviews with pros, cons, and recommendation,link=self,window=blank,width=800,title="AI-Generated Review Summary"]
+
+The LLM processes reviews and generates a structured summary covering:
+
+* **Overall sentiment** -- positive, mixed, or negative
+* **Key pros** -- what customers liked
+* **Key cons** -- common complaints
+* **Recommendation** -- whether to buy based on review consensus
+
+=== How review summarization works
+
+When you click "AI Summarize":
+
+1. Backend fetches all reviews for the product from PostgreSQL
+2. Reviews are formatted into a prompt with instructions
+3. Prompt is sent to Llama 3.1 via the inference server endpoint
+4. LLM generates a summary following the template structure
+5. Summary is returned to the frontend and displayed
+
+**Example prompt structure**:
+
+[source,text]
+----
+Summarize the following product reviews. Include:
+- Overall sentiment
+- Main pros (2-3 points)
+- Main cons (2-3 points)
+- Buying recommendation
+
+Reviews:
+1. "Great product, fast charging works perfectly. Rating: 5/5"
+2. "Good quality but a bit pricey. Rating: 4/5"
+3. "Charges quickly but gets warm during use. Rating: 4/5"
+...
+
+Generate a concise summary:
+----
+
+The LLM analyzes patterns across reviews and produces a coherent summary.
+
+=== LLM context window limitations
+
+One challenge when using LLMs is the **limited context window** -- the maximum number of tokens the model can process in one request.
+
+**Tokens** are word fragments. For example:
+
+* "portable" might be 1 token
+* "preconfigure" might be 2 tokens: "pre" + "configure"
+
+**Llama 3.1 8B theoretical maximum**: 128,000 tokens
+
+**But practical limits are much lower** due to:
+
+* **VRAM capacity** -- GPU memory is limited (24 GB on NVIDIA A10G)
+* **Context rot** -- too much input text distracts the model, reducing accuracy
+* **Non-uniform attention** -- models focus on the beginning and end, neglect the middle
+
+**Real-world capacity on A10G GPU**:
+
+* Model weights: ~17 GB
+* Available for context: ~7 GB
+* Approximately 14,000 tokens (about 10,500 words)
+
+If a product has 200 reviews averaging 50 words each, that's **10,000 words** -- approaching the limit.
+
+=== Handling products with many reviews
+
+The product recommender uses **weighted stratified sampling** to stay within context limits:
+
+**Algorithm**:
+
+1. Set target review budget (e.g., 1,000 reviews)
+2. Group reviews by rating (1-star, 2-star, 3-star, 4-star, 5-star)
+3. Calculate weight for each group based on frequency
+4. Sample reviews proportionally from each group
+5. Within each group, sort by recency (favor newer reviews)
+6. Send sampled reviews to LLM
+
+**Why weighted stratified sampling?**
+
+* **Represents rating distribution** -- if most reviews are 4-5 stars with a spike at 1-star, sample reflects this
+* **Captures sentiment range** -- includes both positive and negative perspectives
+* **Prioritizes recent feedback** -- newer reviews are more relevant
+
+**Alternative approaches** (not used but worth knowing):
+
+* **Aspect-guided summarization** -- summarize separately by product characteristics (battery life, build quality, price)
+* **Question-based filtering** -- generate questions from reviews, check if summary answers them
+* **Hierarchical summarization** -- summarize in batches, then summarize the summaries
+
+=== Verify
+
+Test the review summarization feature:
+
+1. Navigate to a product with multiple reviews
+2. Click the **AI Summarize** button
+3. Observe the generated summary
+
+Expected observations:
+
+✓ Summary appears within a few seconds
+
+✓ Summary includes overall sentiment, pros, cons, and recommendation
+
+✓ Summary reflects the rating distribution (mostly positive if 4-5 star average)
+
+✓ If product has fewer than 4 reviews, you see: "Not enough reviews to generate summary"
+
+Questions to confirm understanding:
+
+✓ What limits LLM context window? → **GPU memory (VRAM), context rot, non-uniform attention**
+
+✓ How does the app handle many reviews? → **Weighted stratified sampling to stay within budget**
+
+✓ Why favor recent reviews? → **More relevant to current product version**
+
+✓ What information does the summary include? → **Sentiment, pros, cons, recommendation**
+
+== Exercise 3: Explore user registration and cold-start recommendations
+
+Finally, let's explore how Kaleido handles **new users** who don't have interaction history yet. This is called the **cold-start problem** -- you can't recommend products based on past behavior if there is no past behavior.
+
+Understanding cold-start strategies is essential for production recommendation systems that must serve all users, not just those with extensive history.
+
+=== The cold-start problem
+
+The two-tower model creates user embeddings based on:
+
+* Preferred categories
+* Interaction history (purchases, views, ratings)
+* Behavioral patterns
+
+**New users have none of this**. You could:
+
+* **Option 1**: Run user encoder on empty features (produces poor, generic embedding)
+* **Option 2**: Wait for interaction data (users see nothing until they interact)
+* **Option 3**: Gather initial preferences and use popularity-based recommendations
+
+Kaleido's product recommender uses **Option 3** with a multi-step registration process.
+
+=== Registration workflow
+
+**Step 1: Category selection**
+
+image::figure-4-new-user-registration.png[New user registration showing checkboxes for product categories like Cables & Accessories and Laptop Accessories,link=self,window=blank,width=700,title="New User Registration - Category Selection"]
+
+Users select broad categories of interest:
+
+* Electronics
+* Home & Garden
+* Sports & Outdoors
+* Fashion & Accessories
+
+They can also drill down to subcategories for more precision.
+
+**Step 2: Product selection**
+
+image::figure-5-product-selection.png[Product selection showing grid of products with images, titles, descriptions, prices, and checkboxes for selection,link=self,window=blank,width=800,title="Product Selection for Preference Profiling"]
+
+After selecting categories, users choose at least 10 specific products they like.
+
+These selections serve 2 purposes:
+
+1. **Immediate recommendations** -- show popular products in selected categories
+2. **Training data** -- selections are recorded as positive interactions for next training run
+
+=== How initial recommendations work
+
+Until the next scheduled training run (typically nightly):
+
+**Recommendation strategy**:
+
+* Filter products by selected categories
+* Rank by popularity (total purchases, average rating, view count)
+* Return top-k products
+
+**Why this works**:
+
+* Popular products in relevant categories are likely to interest new users
+* Provides immediate value without waiting for training
+* User selections generate interaction data for better future recommendations
+
+**After the next training run**:
+
+* User's product selections become positive interactions
+* Two-tower model creates a proper user embedding
+* Recommendations switch from popularity-based to personalized embedding-based
+
+=== Alternative cold-start approach
+
+You could also use the **user encoder immediately** by:
+
+* Using selected categories as user features
+* Leveraging the encoder's learned patterns from similar users
+* Comparing new user embedding to pre-computed product embeddings
+
+This is more expensive (requires real-time encoding) but provides better initial recommendations than pure popularity ranking.
+
+=== Verify
+
+Explore the registration flow:
+
+1. Create a new user account or simulate the registration process
+2. Select several categories of interest
+3. Choose at least 10 products
+4. Observe the initial recommendations
+
+Expected observations:
+
+✓ Category selection is flexible (broad or specific)
+
+✓ Product selection requires minimum 10 items
+
+✓ Initial recommendations appear immediately after registration
+
+✓ Recommendations match selected categories
+
+✓ Popular products appear more frequently
+
+Questions to confirm understanding:
+
+✓ What is the cold-start problem? → **New users have no interaction history for personalized recommendations**
+
+✓ How does registration solve this? → **Gathers preferences and provides popularity-based recommendations**
+
+✓ When do recommendations become personalized? → **After next scheduled training run processes user selections**
+
+✓ Why record product selections? → **Create training data for the two-tower model**
+
+== Troubleshooting
+
+**Issue**: AI Summarize button doesn't generate summary
+
+**Solution**:
+
+. Check if product has at least 4 reviews (minimum requirement)
+. Verify Llama model deployment: `oc get inferenceservice`
+. Check model endpoint is accessible and has valid authentication
+. Review backend logs for LLM connection errors: `oc logs <backend-pod>`
+
+**Issue**: Review summary seems generic or low quality
+
+**Solution**:
+
+. Check if enough reviews were sampled (review count in database)
+. Verify weighted stratified sampling is capturing rating distribution
+. Increase sample budget if context window allows
+. Check prompt template for clarity and specificity
+
+**Issue**: LLM requests timing out or failing
+
+**Solution**:
+
+. Check GPU availability: `oc get pod -o wide` (verify GPU nodes)
+. Verify vLLM pod has sufficient memory
+. Review model resource limits and requests
+. Check if multiple concurrent requests are overwhelming the instance
+
+**Issue**: Inference endpoint returns 404 or connection refused
+
+**Solution**:
+
+. Verify KServe route is created: `oc get route`
+. Check inference service is ready: `oc get inferenceservice`
+. Ensure model loaded successfully: review pod logs
+. Verify authentication token if required
+
+**Issue**: New user sees no recommendations after registration
+
+**Solution**:
+
+. Check if categories were properly saved to database
+. Verify products exist in selected categories
+. Review popularity scoring logic (ensure products have ratings/purchases)
+. Check backend logs for database query errors
+
+**Issue**: Understanding context window vs VRAM capacity
+
+**Solution**:
+
+. **VRAM** = total GPU memory (e.g., 24 GB on A10G)
+. **Model weights** take most VRAM (17 GB for Llama 3.1 8B)
+. **Remaining VRAM** available for context (7 GB → ~14k tokens)
+. **Context window** = maximum tokens model can process (theoretical 128k, practical 14k)
+
+== Learning outcomes
+
+By completing this module, you should now understand:
+
+* ✓ How the Red Hat inference server uses continuous batching to maximize throughput and minimize latency for concurrent model inference requests
+* ✓ How KServe provides Kubernetes-native model serving with standardized APIs, auto-scaling, and traffic routing capabilities
+* ✓ How LLMs generate product review summaries by processing prompts with review content and structured output templates
+* ✓ Why LLM context windows are limited by VRAM capacity, context rot, and non-uniform attention rather than just theoretical token limits
+* ✓ How weighted stratified sampling handles products with many reviews by proportionally representing rating distributions within context budgets
+* ✓ How multi-step user registration solves the cold-start problem by gathering preferences and providing popularity-based recommendations until personalized models can be trained
+
+== Module summary
+
+You've successfully explored model deployment, LLM integration, and cold-start handling for Kaleido's AI recommendation system.
+
+**What you accomplished for Kaleido:**
+
+* Explored how the Red Hat inference server deploys models as scalable services with continuous batching for efficient concurrent request handling
+* Tested LLM-generated review summaries that help customers quickly understand product quality
+* Learned how weighted stratified sampling manages LLM context window limitations when products have hundreds of reviews
+* Discovered how multi-step registration solves the cold-start problem for new users without interaction history
+
+**Business impact realized:**
+
+* **Scalable inference** -- continuous batching handles thousands of concurrent customers efficiently
+* **Informed decisions** -- AI-generated summaries accelerate customer purchase decisions
+* **Production reliability** -- KServe provides auto-scaling and standardized APIs for enterprise deployments
+* **Universal coverage** -- cold-start strategy ensures all users receive relevant recommendations from day one
+
+**Your journey progress:**
+
+You've now completed all 3 modules and have hands-on experience with the complete AI recommendation system -- from architecture and training to production deployment and inference.
+
+**Workshop complete!**
+
+You can now explain to your manager at Kaleido how Red Hat OpenShift AI provides the integrated platform for building production AI applications:
+
+* **OpenShift AI workbenches** -- evaluate and prepare models
+* **FEAST feature store** -- prevent training-serving skew
+* **Kubeflow Pipelines** -- automate training workflows
+* **Red Hat inference server + KServe** -- deploy models at scale
+* **Integrated LLM serving** -- power generative AI features
+
+**Next steps:**
+
+* Explore other AI use cases on OpenShift AI
+* Build your own recommendation models with custom datasets
+* Integrate additional AI capabilities (semantic search, chatbots, content generation)
+* Review OpenShift AI documentation for advanced features

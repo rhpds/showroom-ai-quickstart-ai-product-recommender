@@ -1,19 +1,22 @@
-* xref:index.adoc[What is Showroom?]
+* xref:index.adoc[Home]
 
-.Content Developer Guide
-* xref:quick-start.adoc[Quick Start]
-* xref:content-repo.adoc[Creating a Content Repository]
-* xref:agnosticv-config.adoc[AgnosticV Configuration]
-* xref:ui-config.adoc[UI Configuration]
-* xref:user-data.adoc[User Data and Variables]
-* xref:attribute-example.adoc[Attribute Injection Example]
-* xref:ocp4-role-reference.adoc[OCP4 Role Reference]
-* xref:vm-role-reference.adoc[VM Role Reference]
+* xref:01-overview.adoc[Workshop Overview]
 
-.Showroom Developer Guide
-* xref:architecture.adoc[Architecture]
-* xref:deployer.adoc[Showroom Deployer]
-* xref:images.adoc[Showroom Images]
-* xref:nookbag.adoc[Nookbag UI]
-* xref:ocp-integration.adoc[OCP Integration]
-* xref:contributing.adoc[Contributing]
+* xref:02-details.adoc[Workshop Details]
+
+* xref:03-module-01-architecture-ai-models.adoc[Module 1: Architecture and AI Models]
+** xref:03-module-01-architecture-ai-models.adoc#exercise-1-explore-the-product-recommender-architecture[Exercise 1: Explore the Architecture]
+** xref:03-module-01-architecture-ai-models.adoc#exercise-2-examine-the-ai-models-and-their-roles[Exercise 2: Examine AI Models]
+** xref:03-module-01-architecture-ai-models.adoc#exercise-3-review-the-feast-feature-store[Exercise 3: Review FEAST Feature Store]
+
+* xref:04-module-02-feature-store-training-pipeline.adoc[Module 2: Feature Store and Training Pipeline]
+** xref:04-module-02-feature-store-training-pipeline.adoc#exercise-1-explore-feast-feature-views-and-data-sources[Exercise 1: Explore FEAST Features]
+** xref:04-module-02-feature-store-training-pipeline.adoc#exercise-2-review-kubeflow-pipeline-execution-and-components[Exercise 2: Review Kubeflow Pipeline]
+** xref:04-module-02-feature-store-training-pipeline.adoc#exercise-3-examine-the-two-tower-model-architecture[Exercise 3: Examine Two-Tower Model]
+
+* xref:05-module-03-inference-server-llm-integration.adoc[Module 3: Inference Server and LLM Integration]
+** xref:05-module-03-inference-server-llm-integration.adoc#exercise-1-deploy-and-test-the-inference-server-with-kserve[Exercise 1: Deploy with KServe]
+** xref:05-module-03-inference-server-llm-integration.adoc#exercise-2-generate-product-review-summaries-with-llms[Exercise 2: Generate Review Summaries]
+** xref:05-module-03-inference-server-llm-integration.adoc#exercise-3-explore-user-registration-and-cold-start-recommendations[Exercise 3: Explore Cold-Start Handling]
+
+* xref:06-conclusion.adoc[Conclusion and Next Steps]

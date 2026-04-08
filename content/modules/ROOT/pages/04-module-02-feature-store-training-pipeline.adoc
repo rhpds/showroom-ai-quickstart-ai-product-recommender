@@ -1,0 +1,501 @@
+= Module 2: Feature store and training pipeline
+:source-highlighter: rouge
+:toc: macro
+:toclevels: 1
+
+Your architecture exploration in Module 1 impressed your manager at Kaleido. Now she wants to know: "How do we actually train the recommendation model? And how do we keep our training data consistent with what the model sees in production?"
+
+Kaleido needs a reliable, automated way to train AI models that deliver accurate recommendations in production. You've learned about FEAST and Kubeflow Pipelines, but now you need hands-on experience building and monitoring the training workflow that powers personalized recommendations.
+
+In this module, you'll explore how FEAST manages features and how Kubeflow Pipelines orchestrate model training on OpenShift AI.
+
+== Learning objectives
+
+By the end of this module, you'll be able to:
+
+* Explain how FEAST feature store prevents training-serving skew in production ML systems
+* Understand the Kubeflow Pipelines workflow for training the two-tower recommendation model
+* Describe how dual-encoder architecture creates a shared embedding space for users and products
+* Monitor pipeline execution and troubleshoot common training issues
+
+== Exercise 1: Explore FEAST feature views and data sources
+
+You need to understand how Kaleido's feature store manages product, user, and interaction data. FEAST provides the foundation for consistent features across training and inference -- let's explore how it works.
+
+Understanding feature management is critical because even small differences between training and production data can cause model accuracy to drop significantly.
+
+=== How FEAST organizes features
+
+FEAST uses 3 key concepts:
+
+**Data sources**:
+
+Raw data locations (Parquet files, databases, data warehouses). Data sources can be:
+
+* **Batch sources** -- historical data for model training (stored in Parquet files or data warehouses)
+* **Stream sources** -- real-time data for online inference (stored in PostgreSQL with pgvector)
+
+**Feature views**:
+
+Logical groupings of related features from data sources. A feature view:
+
+* Selects specific columns from a data source
+* Defines feature transformations
+* Specifies the entity (user, product) the features belong to
+* Versions features to prevent breaking changes
+
+**Feature services**:
+
+Collections of feature views used together for a specific ML task. Feature services:
+
+* Combine features from multiple views
+* Provide a single API endpoint for retrieval
+* Ensure features are fetched consistently
+
+=== The product recommender feature architecture
+
+The product recommender uses FEAST to manage 3 entity types:
+
+|===
+|Entity |Features |Purpose
+
+|Products
+|product_id, name, description, category, price, rating, text_embedding, image_embedding
+|Product attributes and pre-computed embeddings for search
+
+|Users
+|user_id, preferred_categories, interaction_count, last_active
+|User preferences and behavior patterns
+
+|Interactions
+|user_id, product_id, interaction_type, magnitude_score, timestamp
+|Historical user-product interactions (views, purchases, ratings)
+|===
+
+These features flow through FEAST in 2 storage layers:
+
+* **Offline store (Parquet)** -- complete historical data for training
+* **Online store (PostgreSQL + pgvector)** -- low-latency subset for inference
+
+=== Why 2 storage layers?
+
+**Training needs**:
+
+* Access to years of historical data
+* Complex aggregations across time windows
+* Batch processing of millions of records
+* Storage optimized for analytics (Parquet columnar format)
+
+**Inference needs**:
+
+* Millisecond latency for real-time predictions
+* Only recent/current feature values
+* Single-record lookups by entity ID
+* Storage optimized for random access (PostgreSQL)
+
+FEAST syncs features between these layers, ensuring the model sees the same feature definitions in both environments.
+
+=== Preventing training-serving skew
+
+Training-serving skew happens when features used during training don't match what the model receives in production. Common causes:
+
+* **Schema drift** -- database schema changes between training and deployment
+* **Transformation differences** -- training code applies different preprocessing than inference code
+* **Data staleness** -- model trained on fresh data, but production uses cached values
+* **Version mismatches** -- training uses v1 of a feature, production uses v2
+
+FEAST prevents this by:
+
+. **Single feature definition** -- features defined once in Python code
+. **Versioned schemas** -- changes create new versions instead of breaking existing models
+. **Consistent transformations** -- same code runs for offline and online retrieval
+. **Materialization** -- automated sync from offline to online store
+
+=== Verify
+
+Check your understanding of FEAST feature management:
+
+Questions to confirm understanding:
+
+✓ What are the 3 FEAST concepts? → **Data sources, feature views, feature services**
+
+✓ Why 2 storage layers? → **Training needs historical batch data, inference needs low-latency lookups**
+
+✓ What is training-serving skew? → **When training features don't match production features**
+
+✓ How does FEAST prevent skew? → **Single feature definition, versioning, consistent transformations**
+
+Expected observations:
+
+* Feature views define schema and transformations once
+* Offline store (Parquet) has complete history
+* Online store (PostgreSQL) has recent values for fast lookup
+* Materialization syncs data between stores
+
+== Exercise 2: Review Kubeflow Pipeline execution and components
+
+Now that you understand feature management, let's explore how Kubeflow Pipelines orchestrate the model training workflow. OpenShift AI integrates KFP with Argo Workflows to automate complex ML training jobs.
+
+Understanding pipeline orchestration is essential for automating model training and deployment at scale.
+
+=== The recommendation model training pipeline
+
+The training pipeline consists of 3 main stages:
+
+|===
+|Stage |Description |Output
+
+|Load training data
+|Loads user, product, and interaction data from FEAST offline store
+|3 datasets (users, products, interactions) as Parquet files
+
+|Train model
+|Pre-processes data, computes interaction magnitudes, trains two-tower model
+|2 trained encoders (user encoder, product encoder)
+
+|Generate candidates
+|For each user, finds top similar products and pushes to FEAST online store
+|Recommendations lookup table in PostgreSQL
+|===
+
+image::figure-1-openshift-ai-pipeline-development-workflow.jpeg[OpenShift AI pipeline development workflow showing engineer writing Python functions, chaining tasks, and submitting to Pipeline Server,link=self,window=blank,width=700,title="OpenShift AI Pipeline Development Workflow"]
+
+=== How Kubeflow Pipelines work
+
+**Pipeline components** are regular Python functions decorated with `@kfp.dsl.component`:
+
+[source,python]
+----
+@dsl.component(
+    base_image="quay.io/my-org/base-image:latest",
+    packages_to_install=["feast", "pandas"]
+)
+def load_data_from_feast(
+    item_df_output: Output[Dataset],
+    user_df_output: Output[Dataset],
+    interaction_df_output: Output[Dataset]
+):
+    # Load data from FEAST offline store
+    from feast import FeatureStore
+
+    fs = FeatureStore(repo_path="/feast")
+
+    # Retrieve historical features
+    items = fs.get_historical_features(...)
+    users = fs.get_historical_features(...)
+    interactions = fs.get_historical_features(...)
+
+    # Save as outputs
+    items.to_parquet(item_df_output.path)
+    users.to_parquet(user_df_output.path)
+    interactions.to_parquet(interaction_df_output.path)
+----
+
+The `@dsl.component` decorator tells KFP:
+
+* **Base image** -- container image to use
+* **Packages** -- Python dependencies to install
+* **Inputs/Outputs** -- data this component consumes and produces
+
+**Pipeline definition** chains components together:
+
+[source,python]
+----
+@dsl.pipeline(name="batch_recommendation")
+def batch_recommendation():
+    # Step 1: Load data
+    load_data_task = load_data_from_feast()
+
+    # Step 2: Train model (depends on load_data_task)
+    train_model_task = train_model(
+        item_df_input=load_data_task.outputs["item_df_output"],
+        user_df_input=load_data_task.outputs["user_df_output"],
+        interaction_df_input=load_data_task.outputs["interaction_df_output"]
+    ).after(load_data_task)
+
+    # Step 3: Generate recommendations
+    generate_candidates_task = generate_candidates(
+        user_encoder=train_model_task.outputs["user_output_model"],
+        product_encoder=train_model_task.outputs["item_output_model"]
+    ).after(train_model_task)
+----
+
+The `.after()` method specifies execution order. KFP uses this to create a directed acyclic graph (DAG) showing task dependencies.
+
+=== How components share data
+
+Components write outputs to their **local ephemeral storage** as Parquet files. But how does the next component read those files if pods can't access each other's storage?
+
+**KFP solves this with S3-compatible storage (MinIO)**:
+
+. Component 1 writes `products.parquet` to local storage
+. KFP's init container copies the file to MinIO
+. KFP creates Component 2's pod
+. KFP's init container downloads `products.parquet` from MinIO to Component 2's local storage
+. Component 2 reads `products.parquet` as if it were local
+
+This abstraction lets you write simple file I/O code while KFP handles distributed storage behind the scenes.
+
+**For very large datasets**, use alternatives like:
+
+* Pass only S3 paths (not full data)
+* Use external storage (FEAST, PostgreSQL)
+* Stream data instead of batch transfers
+
+=== Pipeline monitoring in OpenShift AI
+
+Access the Kubeflow Pipelines dashboard:
+
+. Navigate to OpenShift AI console
+. Select **Data Science Pipelines**
+. Click on **Runs** to see pipeline executions
+
+image::figure-3-openshift-ai-dashboard-recommender-pipeline-run.png[OpenShift AI Dashboard showing successful pipeline run with connected nodes for data loading, model training, and candidate generation,link=self,window=blank,width=800,title="OpenShift AI Dashboard - Recommender Pipeline Run"]
+
+The dashboard shows:
+
+* **Pipeline graph** -- visual DAG of task dependencies
+* **Task status** -- green checkmarks for completed, red X for failures
+* **Execution logs** -- stdout/stderr from each component
+* **Artifacts** -- input/output datasets and models
+* **Run metrics** -- duration, resource usage
+
+=== Verify
+
+Check your understanding of Kubeflow Pipelines:
+
+Questions to confirm understanding:
+
+✓ What decorator creates a pipeline component? → **@kfp.dsl.component**
+
+✓ How do components share data? → **Write to local storage, KFP copies via MinIO S3**
+
+✓ How do you specify task order? → **.after() method chains dependencies**
+
+✓ Where do you monitor runs? → **OpenShift AI dashboard, Data Science Pipelines section**
+
+Expected observations:
+
+* Components are Python functions with decorators
+* Pipeline definition chains tasks together
+* KFP handles containerization and data transfer automatically
+* Dashboard provides visibility into execution and artifacts
+
+== Exercise 3: Examine the two-tower model architecture
+
+Now let's explore the core recommendation model. The two-tower architecture trains 2 separate neural networks (one for users, one for products) to create embeddings in a **shared space** where distance reflects how well they match.
+
+Understanding dual-encoder architecture is essential for building recommendation systems that scale to millions of users and products.
+
+=== Why two-tower architecture?
+
+In Module 1, you learned that embeddings enable search by representing items as vectors. But we can't directly compare user attributes to product attributes because they're different types of data:
+
+* **User features**: preferred categories, interaction history, demographics
+* **Product features**: name, description, price, category, ratings
+
+These features live in **different embedding spaces**. Comparing them would be like using 2 different map coordinate systems -- the numbers don't relate to each other.
+
+**The two-tower model solves this by training 2 encoders simultaneously**:
+
+* **User encoder** -- converts user features to 64-dimensional embedding
+* **Product encoder** -- converts product features to 64-dimensional embedding
+* **Shared training objective** -- distance between embeddings reflects interaction strength
+
+After training, user and product embeddings exist in the **same space**, making distance meaningful.
+
+=== EntityTower: The building block
+
+Both encoders use the same neural network architecture called **EntityTower**:
+
+image::figure-2-entitytower-used-for-both-products-and-users.png[EntityTower architecture showing text features, numeric features, normalization layers, and dense transformations producing 64-unit embeddings,link=self,window=blank,width=600,title="EntityTower Architecture"]
+
+The EntityTower processes 2 types of features:
+
+**Text features** (product name, description, user preferences):
+
+. Convert to 384-dimensional embeddings using BGE model (done during preprocessing)
+. Linear transformation to 58 dimensions per text attribute
+. Average multiple text embeddings together
+. Result: 58-dimensional text representation
+
+**Numeric features** (price, rating, interaction count):
+
+. Normalize to account for different scales (price in dollars vs rating 1-5)
+. Linear transformation to 6 dimensions
+. Result: 6-dimensional numeric representation
+
+**Combine and transform**:
+
+. Concatenate text (58-dim) + numeric (6-dim) = 64 dimensions
+. Normalize the combined layer
+. Expand to 128 dimensions with non-linear activation (ReLU)
+. Compress back to 64 dimensions
+. Final normalization
+
+The output is a 64-dimensional embedding that captures both text semantics and numeric attributes.
+
+=== Training the two-tower model
+
+The two-tower architecture instantiates EntityTower twice:
+
+image::figure-3-two-tower-model-creates-a-shared-user-and-product-embedding-space.png[Two-tower model showing user EntityTower and product EntityTower with outputs compared to magnitude scores,link=self,window=blank,width=700,title="Two-Tower Model Creates Shared Embedding Space"]
+
+**Training process**:
+
+. Take a batch of historical user-product interactions
+. User encoder processes user features → 64-dimensional user embedding
+. Product encoder processes product features → 64-dimensional product embedding
+. Compute **Euclidean distance** between the 2 embeddings
+. Compare distance to **magnitude score** (how strong was this interaction?)
+. Use **mean squared error (MSE)** as loss function
+. Backpropagation updates both encoder weights to minimize error
+
+**Magnitude scoring** assigns numeric values to interactions:
+
+image::figure-4-magnitude-scoring-for-user-product-interactions.png[Magnitude scoring diagram showing how purchases, cart additions, and views are weighted to create target scores,link=self,window=blank,width=700,title="Magnitude Scoring for User-Product Interactions"]
+
+Interaction types have different importance:
+
+* **Purchase** -- strongest positive signal, weighted heavily
+* **Add to cart** -- strong interest, medium weight
+* **High rating** -- positive sentiment, scaled by rating value
+* **View** -- weak signal, minimal weight
+* **Low rating** -- negative signal, larger distance target
+
+The loss function is **inverted** -- lower magnitude score (strong interaction) should produce **smaller** embedding distance.
+
+After training converges:
+
+* User embeddings reflect preferences and behavior
+* Product embeddings reflect attributes and appeal
+* Distance between embeddings predicts interaction likelihood
+
+=== Using the trained model for recommendations
+
+Once training completes, you can generate recommendations:
+
+. Take a user_id
+. User encoder creates user embedding (64 dimensions)
+. Search for products with **nearest embeddings** (smallest Euclidean distance)
+. Return top-k closest products as recommendations
+
+This is exactly the **semantic search** you learned about in Module 1, but now the embeddings are learned from user behavior instead of pre-trained text models.
+
+The "generate candidates" pipeline stage pre-computes recommendations for all users and stores them in FEAST online store for fast lookup.
+
+=== Verify
+
+Check your understanding of the two-tower architecture:
+
+Questions to confirm understanding:
+
+✓ Why can't we directly compare user and product features? → **They're in different embedding spaces**
+
+✓ What does the two-tower model create? → **Shared embedding space where distance is meaningful**
+
+✓ What are the 2 encoders? → **User encoder and product encoder (both use EntityTower architecture)**
+
+✓ What does magnitude scoring do? → **Assigns numeric targets based on interaction strength**
+
+✓ How do you generate recommendations? → **Find products with nearest embeddings to user embedding**
+
+Expected understanding:
+
+* Two-tower trains 2 encoders with shared objective
+* EntityTower combines text (58-dim) and numeric (6-dim) features
+* Training minimizes distance for strong interactions
+* Recommendations = nearest neighbor search in shared space
+* Pre-computation stores results in FEAST for fast retrieval
+
+== Troubleshooting
+
+**Issue**: Pipeline fails during data loading stage
+
+**Solution**:
+
+. Check FEAST connectivity: verify feature store is accessible
+. Review feature view definitions: ensure schemas match data sources
+. Inspect offline store: confirm Parquet files exist and are readable
+. Check component logs: `oc logs <load-data-pod-name>`
+
+**Issue**: Model training fails with out-of-memory errors
+
+**Solution**:
+
+. Reduce batch size in training configuration
+. Increase memory limits for training pod
+. Check if dataset fits in available memory
+. Consider streaming data instead of loading all at once
+
+**Issue**: Pipeline shows success but no recommendations appear
+
+**Solution**:
+
+. Verify "generate candidates" stage completed
+. Check FEAST online store: `feast materialize` sync may be needed
+. Inspect candidate generation logs for errors
+. Query PostgreSQL directly to confirm recommendations were written
+
+**Issue**: Embeddings seem random or low quality
+
+**Solution**:
+
+. Verify BGE model is correctly preprocessing text features
+. Check magnitude scoring: scores should reflect interaction strength
+. Increase training epochs: model may need more iterations
+. Review training loss curve: should decrease over time
+
+**Issue**: Understanding the difference between FEAST offline and online stores
+
+**Solution**:
+
+. **Offline** = historical batch data for training (Parquet)
+. **Online** = recent/current values for inference (PostgreSQL)
+. Materialization syncs offline → online
+. Training reads from offline, inference reads from online
+
+**Issue**: Pipeline components fail to find input data
+
+**Solution**:
+
+. Check component parameter names match output names
+. Verify `.after()` chains enforce correct execution order
+. Inspect MinIO buckets: confirm files were copied
+. Review KFP init container logs for transfer errors
+
+== Learning outcomes
+
+By completing this module, you should now understand:
+
+* ✓ How FEAST feature store uses offline (Parquet) and online (PostgreSQL) layers to support both training and inference workloads
+* ✓ How Kubeflow Pipelines orchestrate ML workflows by chaining Python functions into containerized components with automatic data transfer
+* ✓ Why the two-tower dual-encoder architecture creates a shared embedding space that makes user-product distance meaningful for recommendations
+* ✓ How the EntityTower neural network combines text embeddings and numeric features to produce entity representations
+* ✓ How magnitude scoring converts interaction types into numeric targets that guide model training toward better recommendations
+
+== Module summary
+
+You've successfully explored FEAST feature management and Kubeflow Pipeline orchestration for Kaleido's recommendation system.
+
+**What you accomplished for Kaleido:**
+
+* Explored how FEAST prevents training-serving skew by maintaining consistent feature definitions across environments
+* Reviewed the 3-stage Kubeflow Pipeline that automates model training from data loading through candidate generation
+* Examined the two-tower architecture that learns coordinated embeddings for users and products
+* Understood how EntityTower combines text and numeric features into unified representations
+
+**Business impact realized:**
+
+* **Automated ML workflows** -- Kubeflow Pipelines eliminate manual training steps and ensure repeatability
+* **Production reliability** -- FEAST guarantees training and inference use the same features
+* **Scalable recommendations** -- pre-computed embeddings enable fast nearest-neighbor search for millions of products
+* **Continuous improvement** -- pipeline can be scheduled to retrain models as new interaction data arrives
+
+**Your journey progress:**
+
+You now understand how to manage features consistently and orchestrate complex training workflows. This knowledge is essential for operating production ML systems that maintain accuracy over time.
+
+**Next steps:**
+
+Module 3 will show you how to deploy trained models with the Red Hat inference server and KServe, and how to use LLMs to generate product review summaries for Kaleido's customers.

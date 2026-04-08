@@ -1,0 +1,131 @@
+= Conclusion and next steps
+
+Congratulations! You've completed the Building an AI-driven product recommender with Red Hat OpenShift AI workshop.
+
+== What you've learned
+
+Throughout this workshop, you've gained hands-on experience with:
+
+* ✅ Understanding different types of transformer models (encoder-only, decoder-only, dual-encoder) and their optimal use cases for embeddings, generation, and recommendations
+* ✅ Building and training a custom two-tower AI model that creates a shared embedding space for personalized product recommendations
+* ✅ Using LLMs to automatically generate product review summaries with proper context window management and sampling strategies
+* ✅ Building and monitoring Kubeflow Pipelines that orchestrate complex ML training workflows from data loading to candidate generation
+* ✅ Deploying the Red Hat inference server with KServe for scalable, production-grade model serving with continuous batching
+* ✅ Managing AI model features with the OpenShift AI FEAST feature store to prevent training-serving skew and ensure production reliability
+
+You now have the skills to build complete AI-driven applications on Red Hat OpenShift AI, from model development through production deployment.
+
+== Key takeaways
+
+The most important concepts to remember:
+
+. **Architecture matters for AI applications**: Different AI model types serve different purposes. Encoder-only models create embeddings for search and similarity, decoder-only models generate text, and dual-encoder models enable recommendations by learning coordinated representations. Choosing the right architecture for each task optimizes both performance and resource usage.
+
+. **Feature consistency prevents production failures**: Training-serving skew occurs when the features used during model training don't match what the model receives in production. FEAST feature store solves this by providing a single source of truth for feature definitions, versioning, and transformations across offline (training) and online (inference) storage layers.
+
+. **Production ML requires orchestration and serving infrastructure**: Kubeflow Pipelines automate complex training workflows by chaining Python functions into containerized components with automatic data transfer. The Red Hat inference server transforms static model files into scalable services using continuous batching to handle thousands of concurrent requests efficiently.
+
+. **LLM integration requires context window management**: LLMs have theoretical token limits (128,000 for Llama 3.1) but practical limits are much lower due to VRAM capacity, context rot, and non-uniform attention. Production applications use techniques like weighted stratified sampling to represent data within budget while maintaining quality.
+
+. **Cold-start strategies ensure universal coverage**: Recommendation systems must serve all users, not just those with extensive history. Multi-step registration gathers initial preferences and provides popularity-based recommendations until personalized models can be trained with accumulated interaction data.
+
+== Next steps
+
+Ready to continue your journey? Here are some recommended next steps:
+
+=== Expand your OpenShift AI skills
+
+Continue building AI applications with these advanced topics:
+
+* **Custom serving runtimes** -- Deploy models with specialized inference servers optimized for your hardware and use case
+* **Model monitoring and observability** -- Track model performance, drift, and data quality in production deployments
+* **AutoML and hyperparameter tuning** -- Automate model selection and optimization with tools like Optuna integrated into Kubeflow Pipelines
+* **Multi-model serving** -- Deploy multiple models on a single inference server to optimize resource utilization
+* **Continuous training pipelines** -- Implement automated retraining workflows triggered by data drift detection or scheduled intervals
+
+=== Practice projects
+
+Put your new skills to work with these project ideas:
+
+. **Content-based recommendation system**: Build a news article or blog post recommender using BGE embeddings and semantic search, then add user personalization with a simplified two-tower model trained on click data.
+
+. **Chatbot with retrieval-augmented generation (RAG)**: Combine semantic search over a knowledge base with LLM generation to create a customer support chatbot that answers questions accurately with source citations.
+
+. **Image similarity search for e-commerce**: Use CLIP embeddings to build a visual search feature that finds products similar to uploaded images, then integrate with the product recommender for hybrid text-image recommendations.
+
+. **Review sentiment analyzer**: Train a classification model on review text and ratings, deploy it with KServe, and integrate with the review summarization feature to tag summaries with detailed sentiment breakdowns.
+
+. **Real-time feature store with streaming data**: Extend the FEAST integration to handle real-time user interactions from Kafka or similar streaming platforms, enabling immediate recommendation updates without waiting for nightly batch jobs.
+
+=== Certification paths
+
+Consider pursuing these Red Hat certifications:
+
+* **Red Hat Certified Specialist in AI and Machine Learning** -- Validates skills in deploying and managing AI/ML workloads on OpenShift AI
+* **Red Hat Certified Specialist in OpenShift** -- Foundation for platform engineering skills that support AI infrastructure
+* **Red Hat Certified Architect** -- Advanced certification demonstrating expertise across multiple Red Hat technologies including AI platforms
+
+== References
+
+This section consolidates all references used across the workshop modules.
+
+=== Official Red Hat documentation
+
+* link:https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0[Red Hat OpenShift AI documentation^] - Comprehensive product documentation covering installation, configuration, and usage (Used in: Overview, Module 2, Module 3)
+* link:https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/deploying_models/deploying_models[Red Hat AI Inference Server documentation^] - Model deployment and serving configuration (Used in: Module 3)
+* link:https://www.redhat.com/en/technologies/cloud-computing/openshift/openshift-ai[Red Hat OpenShift AI product page^] - Product overview, features, and business value (Used in: Overview, Module 2)
+
+=== Developer resources
+
+* link:https://developers.redhat.com/products/red-hat-openshift-ai/overview[Red Hat Developer - OpenShift AI resources^] - Tutorials, getting started guides, and learning paths (Used in: Module 2)
+* link:https://huggingface.co/RedHatOfficial[Red Hat AI repository on Hugging Face^] - Validated AI models and datasets from Red Hat (Used in: Module 1, Module 3)
+
+=== AI and ML frameworks
+
+* link:https://github.com/kubeflow/pipelines[Kubeflow Pipelines documentation^] - Pipeline development, component creation, and workflow orchestration (Used in: Module 2)
+* link:https://docs.feast.dev/[Feast feature store documentation^] - Feature management, offline and online stores, and materialization (Used in: Module 1, Module 2)
+* link:https://argoproj.github.io/argo-workflows/[Argo Workflows documentation^] - Workflow engine that powers OpenShift AI pipeline execution (Used in: Module 2)
+
+=== AI models and embeddings
+
+* link:https://huggingface.co/BAAI/bge-small-en-v1.5[BAAI/BGE-small-en-v1.5 text embedding model^] - Encoder-only model for semantic text embeddings (Used in: Module 1, Module 2)
+* link:https://huggingface.co/openai/clip-vit-base-patch32[OpenAI CLIP image embedding model^] - Vision-language model for image embeddings (Used in: Module 1)
+* link:https://huggingface.co/meta-llama/Llama-3.1-8B[Meta Llama 3.1 8B model^] - Decoder-only LLM for text generation and summarization (Used in: Module 3)
+
+=== Source material
+
+* **Red Hat AI Quickstart: Implementing AI-Driven Product Recommendations and Semantic Search** - Companion article for this workshop covering architecture, implementation details, and best practices (Used in: All modules)
+* link:https://github.com/rhpds/product-recommender-system[Product Recommender System source code^] - Reference implementation demonstrating OpenShift AI components in practice (Used in: All modules)
+
+=== Additional reading
+
+* link:https://www.youtube.com/watch?v=QEaBAZQCtwE[Introduction to embeddings and vector search^] - Background on semantic embeddings and nearest-neighbor search
+* link:https://docs.vllm.ai/en/latest/[vLLM documentation^] - High-performance LLM inference engine used by the Red Hat inference server
+* link:https://kserve.github.io/website/latest/[KServe documentation^] - Kubernetes-native model serving framework
+* link:https://www.postgresql.org/docs/current/pgvector.html[pgvector extension for PostgreSQL^] - Vector similarity search in PostgreSQL used by FEAST online store
+
+== Share your feedback
+
+Help us improve this workshop:
+
+* What did you find most valuable in this workshop?
+* Which concepts or exercises could be improved?
+* What additional AI/ML topics would you like to see covered?
+* Did the hands-on exercises match your learning style and experience level?
+
+Your feedback helps us create better learning experiences for the Red Hat community.
+
+== Thank you!
+
+Thank you for participating in this workshop. You've taken an important step in building AI-driven applications with Red Hat OpenShift AI.
+
+The skills you've learned -- from model architecture selection to production deployment -- are essential for creating enterprise-grade AI systems. We encourage you to continue experimenting, building, and sharing your knowledge with the community.
+
+Keep building, keep learning! 🚀
+
+---
+
+**Workshop**: Building an AI-driven product recommender with Red Hat OpenShift AI +
+**Completed**: {localdate} +
+**Platform**: Red Hat Showroom +
+**Version**: 1.0
