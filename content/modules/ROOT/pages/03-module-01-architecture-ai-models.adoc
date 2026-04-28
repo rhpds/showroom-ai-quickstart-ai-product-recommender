@@ -18,7 +18,7 @@ By the end of this module, you'll be able to:
 * Understand how embedding models enable semantic search and recommendations
 * Recognize when to use encoder-only versus decoder-only LLM architectures
 
-== Exercise 1: Explore the product recommender architecture
+== Exercise 1: Explore the product recommender application
 
 You need to understand how Kaleido's AI recommendation system works end-to-end. Let's start by exploring the deployed application and examining the architectural components that make intelligent recommendations possible.
 
