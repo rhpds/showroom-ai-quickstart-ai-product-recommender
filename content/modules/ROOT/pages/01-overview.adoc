@@ -83,7 +83,7 @@ If the AI recommendation system proves effective for Kaleido's use case, here's 
 == Common questions
 
 **"What types of AI models will we use for recommendations?"**
-→ Module 1 explains the four key models: BGE text embeddings, CLIP image embeddings, Llama for review summaries, and a custom two-tower recommender model
+→ Module 1 explains the four key models: BGE text embeddings, CLIP image embeddings, Llama, Nemotron or Qwen for review summaries, and a custom two-tower recommender model
 
 **"How do we prevent training-serving skew in production?"**
 → Module 2 demonstrates using the FEAST feature store to maintain consistent user and product features across training and inference
