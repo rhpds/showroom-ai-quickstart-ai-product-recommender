@@ -32,11 +32,7 @@ ML models are **static collections of numbers** representing learned patterns. T
 2. Run computations over input data (matrix multiplications, activations)
 3. Return predictions or embeddings
 
-A naive approach would:
-
-* Load the model for each request
-* Process one request at a time
-* Unload the model when done
+A naive approach would process one request at a time.
 
 This would be **painfully slow** -- like waiting in a grocery checkout line behind customers with full carts when you only have a few items.
 
@@ -89,9 +85,9 @@ The product recommender deploys these models via KServe:
 |===
 |Model |Purpose |Runtime
 
-|Llama 3.1 8B (qwen variant via MaaS)
+|Llama 3.1 8B, NVIDIA Nemotron Nano or Qwen3-14B via MaaS (Red Hat's Model-as-a-Service)
 |Generate product review summaries
-|vLLM NVIDIA GPU ServingRuntime
+|vLLM NVIDIA GPU or (Intel Gaudi on Maas) ServingRuntime
 
 |BGE text encoder
 |Create text embeddings for search queries
@@ -103,50 +99,6 @@ The product recommender deploys these models via KServe:
 |===
 
 The two-tower model runs during the **training pipeline** -- recommendations are pre-computed and stored in FEAST, so there's no inference-time model serving for recommendations.
-
-=== How to verify model deployments
-
-Check if models are deployed and ready:
-
-[source,bash,role="execute"]
-----
-oc get inferenceservice
-----
-
-Expected output shows:
-
-* **NAME** -- model identifier
-* **READY** -- True when model loaded and serving
-* **URL** -- inference endpoint
-
-You can test an inference endpoint:
-
-[source,bash,role="execute"]
-----
-curl -X POST https://<model-url>/v1/embeddings \
-  -H "Content-Type: application/json" \
-  -d '{
-    "input": "portable power bank with fast charging"
-  }'
-----
-
-Expected response:
-
-[source,json]
-----
-{
-  "object": "list",
-  "data": [
-    {
-      "object": "embedding",
-      "embedding": [0.023, -0.015, 0.042, ...],
-      "index": 0
-    }
-  ]
-}
-----
-
-The embedding is a list of 384 numbers representing the semantic meaning of the input text.
 
 === Verify
 
@@ -160,7 +112,7 @@ Questions to confirm understanding:
 
 ✓ What does KServe provide? → **Kubernetes-native model serving with standardized APIs and auto-scaling**
 
-✓ Why use accelerators (GPUs)? → **Maximize throughput by processing batched requests in parallel**
+✓ Why use accelerators (GPUs or Intel Gaudi)? → **Maximize throughput by processing batched requests in parallel**
 
 Expected observations:
 
@@ -171,7 +123,7 @@ Expected observations:
 
 == Exercise 2: Generate product review summaries with LLMs
 
-Now let's explore how Kaleido uses the Llama 3.1 LLM to generate product review summaries. This capability helps customers quickly understand product quality without reading hundreds of reviews.
+Now let's explore how Kaleido uses the LLMs to generate product review summaries. This capability helps customers quickly understand product quality without reading hundreds of reviews.
 
 Understanding LLM integration and context window management is essential for production generative AI applications.
 
@@ -202,7 +154,7 @@ When you click "AI Summarize":
 
 1. Backend fetches all reviews for the product from PostgreSQL
 2. Reviews are formatted into a prompt with instructions
-3. Prompt is sent to Llama 3.1 via the inference server endpoint
+3. Prompt is sent to LLM model via the inference server endpoint
 4. LLM generates a summary following the template structure
 5. Summary is returned to the frontend and displayed
 

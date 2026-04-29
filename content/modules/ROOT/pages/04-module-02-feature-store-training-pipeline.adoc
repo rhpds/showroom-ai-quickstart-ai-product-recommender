@@ -246,9 +246,14 @@ This abstraction lets you write simple file I/O code while KFP handles distribut
 
 Access the Kubeflow Pipelines dashboard:
 
-. Navigate to OpenShift AI console
-. Select **Data Science Pipelines**
-. Click on **Runs** to see pipeline executions
+. Navigate to the OpenShift AI console (click on the OpenShift AI link on the right navigation bar)
+. Click on the hamburger icon and select Develop & train | Pipelines | Runs
+. Click on the hamburger icon again to hide the left navigation bar
+. You should see at least one entry in the table (e.g., batch_training_2026_04...). The entry represents an execution or run of the recommender model's training pipeline. A pipeline is just the sequence of data processing and other steps required to build a machine learning model.
+. Click on the training run and you will see a visualization of the pipeline. Notice the green checkmarks next to the tasks which executed successfully. Any tasks which encountered a problem would be shown in red to support production troubleshooting.
+. Notice that some tasks appear on the same horizontal row. These leverage the cluster's resources to implement parallel execution to speed up the training process.
+. Click on the `train-model` task. You will see a right-hand navigation bar. Notice the input and output data is clearly shown, support data lineage tracking. Additional information is also stored in the s3 storage bucket.
+. Click the other links on this screen to learn how OpenShift AI Pipeline Server supports data lineage tracking and troubleshooting.
 
 image::figure-3-openshift-ai-dashboard-recommender-pipeline-run.png[OpenShift AI Dashboard showing successful pipeline run with connected nodes for data loading, model training, and candidate generation,link=self,window=blank,width=800,title="OpenShift AI Dashboard - Recommender Pipeline Run"]
 

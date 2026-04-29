@@ -18,7 +18,7 @@ By the end of this module, you'll be able to:
 * Understand how embedding models enable semantic search and recommendations
 * Recognize when to use encoder-only versus decoder-only LLM architectures
 
-== Exercise 1: Explore the product recommender application
+== Exercise 1: Explore the product recommender architecture
 
 You need to understand how Kaleido's AI recommendation system works end-to-end. Let's start by exploring the deployed application and examining the architectural components that make intelligent recommendations possible.
 
@@ -26,7 +26,23 @@ The product recommender system integrates multiple AI technologies -- each servi
 
 . Access the product recommender application.
 +
-Open your web browser and navigate to the deployed application (your instructor will provide the URL).
+Open your web browser and navigate to the deployed application using the route the quickstart automatically creates. 
++
+*Step 1:* From the projects page, click on the name of your project. This is the same name as the user you logged in with.
++
+*Step 2:* Click on the 'Hamburger menu' at the left of the OpenShift logo (these are the stack horizontal bars).
++
+*Step 3:* Select Networking | Routes
++
+*Step 4:* Click on the 'product-recommender-system-frontend' route.
++
+*Step 5:* Right-click the Location URL on the right of the screen and select Open in New Window. You can instead click on the URL but this will open a new tab and you'll need to switch back and forth between tabs to follow these instructions.
++
+*Step 6:* You'll see the 'Log in to your account' page for the quickstart. Type in the demo user ID and password (these are shown below the Log in) button. NOTE: This is not the same user ID and password you used to login to this cluster.
++
+User ID: `demo1@example.com`
++
+Password: `demo123`
 +
 You'll see a landing page with personalized product recommendations and a search interface.
 
@@ -34,10 +50,10 @@ You'll see a landing page with personalized product recommendations and a search
 +
 Notice the different ways the application helps customers discover products:
 +
-* **Personalized recommendations** -- suggested products based on user preferences
-* **Text search** -- find products by typing descriptions
-* **Image search** -- upload product images to find similar items
-* **AI-generated review summaries** -- condensed insights from customer reviews
+* **Personalized product landing page** -- The landing page shows the suggested products based on this user's preferences and interaction history. These are provided by the two-tower model you'll learn about later.
+* **Text search** -- Find products by typing descriptions (top bar) and click the Search button. This is powered by a hybrid search capability that uses a special embedding model.
+* **Image search** -- Click 'Upload' to upload an image from your computer and search for products with similar product images. This is powered by another embedding model tuned for images.
+* **AI-generated review summaries** -- Click on a product image on the landing page to see its reviews. Click AI Summarize to summarize all the reviews for this product. Try adding your own review to see how it gets captured by the AI Summarize feature the next time you click on it. This feature is powered by the LLM model and the Red Hat inference server.
 +
 Each of these capabilities relies on different AI models working together.
 
@@ -52,7 +68,7 @@ The architecture includes 4 key technology areas:
 * **LLMs and machine learning models** -- 4 different models for embeddings, generation, and recommendations
 * **Inference servers** -- scalable model serving with continuous batching
 * **Feature store** -- consistent data management across training and inference
-* **Model training pipeline orchestration** -- automated workflows with Kubeflow Pipelines
+* **Model training pipeline orchestration** -- automated workflows with Kubeflow Pipelines to train the two-tower model.
 
 === Verify
 
@@ -96,7 +112,7 @@ The AI quickstart uses these models:
 |Embeds product images to enable image-based search
 |Encoder-only (image embedding)
 
-|Llama 3.1 8B
+|Qwen3 14B
 |Generates product review summaries from customer reviews
 |Decoder-only (generative LLM)
 
@@ -113,10 +129,10 @@ When building AI applications, engineers must consider the **task** and **data t
 
 * Convert inputs (text or images) to numeric representations called **embeddings**
 * Embeddings are lists of numbers that capture semantic meaning
-* Similar items have embeddings that are close together in vector space
+* Similar items have embeddings that are close together in multi-dimensional space
 * Used for search, similarity, and classification tasks
 
-**Decoder-only models** (Llama 3.1):
+**Decoder-only models** (Qwen3 14-B):
 
 * Generate new tokens sequentially in response to instructions
 * Take a prompt and produce human-readable text
@@ -125,7 +141,7 @@ When building AI applications, engineers must consider the **task** and **data t
 **Dual-encoder models** (Two-Tower):
 
 * Train 2 separate encoders (one for users, one for products)
-* Create embeddings in a **shared space** where distance reflects interaction strength
+* Create embeddings in a **shared space** where distance reflects interaction strength. Embeddings for users are pushed closer to the product embeddings for those products they've interacted positively with in the past.
 * Enable recommendations by finding nearest product embeddings to user embeddings
 
 === How embeddings enable semantic search
@@ -133,6 +149,8 @@ When building AI applications, engineers must consider the **task** and **data t
 Embeddings are the foundation of modern AI search and recommendations. Here's why they matter:
 
 Traditional keyword search matches exact words -- searching for "thin remote controls" won't find products described as "slim remotes." Embedding models understand that these phrases mean the same thing because they learned semantic relationships during training.
+
+_Try this now to check if it works. You should see remote controls at the top of the list for both searches._
 
 The BGE-small model converts text to 384-dimensional vectors. Each dimension captures a different aspect of meaning. When you search for a product, the system:
 
@@ -171,7 +189,7 @@ Check your understanding of model types and their roles:
 Which model would you use for each task?
 
 . Finding products similar to an uploaded image → **CLIP (image encoder)**
-. Generating a summary of 100 product reviews → **Llama 3.1 (decoder-only LLM)**
+. Generating a summary of 100 product reviews → **Qwen3 14B (decoder-only LLM)**
 . Finding products semantically similar to "portable power bank" → **BGE (text encoder)**
 . Recommending products based on user purchase history → **Two-Tower (dual-encoder)**
 
@@ -185,7 +203,7 @@ Expected understanding:
 
 ✓ Architecture choice depends on the task requirements
 
-== Exercise 3: Review the FEAST feature store
+== Exercise 3: Review the FEAST feature store concepts
 
 AI models only learn from data, so the features used during training must match those used during inference. Otherwise, accuracy suffers through a phenomenon called **training-serving skew**.
 
@@ -275,7 +293,7 @@ Questions to confirm understanding:
 
 **Solution**:
 
-. Check if Llama model is deployed: `oc get inferenceservice`
+. Check if the LLM model is deployed: `oc get inferenceservice`
 . Verify model endpoint is accessible
 . Check if product has at least 4 reviews (minimum for summarization)
 . Review backend logs for LLM connection errors
