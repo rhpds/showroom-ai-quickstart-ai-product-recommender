@@ -5,13 +5,13 @@
 
 == Your role and mission
 
-You're a platform engineer at Kaleido, and you've been assigned to build an AI-driven product recommendation system for an important business initiative.
+You're a software engineer at Kaleido, and you've been assigned to build an AI-driven product recommendation system for an important business initiative.
 
 Kaleido needs to provide intelligent and informative recommendations for a diverse product line through an intuitive user interface. Your manager has explained: "Our customers struggle to find the right products among thousands of options. We need an AI system that understands what they're looking for and provides personalized recommendations with helpful review summaries."
 
 **Your assignment**: Build a complete AI-driven product recommender using Red Hat OpenShift AI to deliver personalized product suggestions and automated review summaries.
 
-**The objective**: Demonstrate how OpenShift AI can power intelligent product discovery through custom ML models, feature stores, inference servers, and LLM-generated content.
+**The objective**: Demonstrate how OpenShift AI can power intelligent product discovery through custom ML models, feature stores, inference servers, and LLM-generated product review summaries.
 
 == Success criteria for your mission
 
@@ -24,7 +24,7 @@ By the end of this workshop, you'll have practical OpenShift AI skills to addres
 * Deploy the Red Hat inference server → **serve AI models at scale with optimal performance**
 * Manage features with OpenShift AI FEAST → **ensure consistent data across training and inference**
 
-**Technical outcome**: Hands-on experience building a production-ready AI recommendation system using enterprise-grade OpenShift AI components.
+**Technical outcome**: Introduction to the components and technologies needed to build an AI recommendation system using enterprise-grade OpenShift AI components.
 
 **Business benefit**: Measurable improvements in customer engagement, product discovery, and conversion rates through intelligent AI-driven recommendations.
 
@@ -83,7 +83,10 @@ If the AI recommendation system proves effective for Kaleido's use case, here's 
 == Common questions
 
 **"What types of AI models will we use for recommendations?"**
-→ Module 1 explains the four key models: BGE text embeddings, CLIP image embeddings, Llama, Nemotron or Qwen for review summaries, and a custom two-tower recommender model
+→ Module 1 explains the four key models: BGE text embeddings, CLIP image embeddings, Llama or Qwen for review summaries, and a custom two-tower recommender model
+
+**"Do we need to use the above specific models?"**
+→ No. There are many models to choose from and factors you must consider. We'll review some of these factors in Module 1, but for now keep in mind that though you can use Llama to generate review summaries, you can explore among many other options. Start by exploring models on the Red Hat repository on Huggingface here (https://huggingface.co/RedHatAI). If you are running this showroom on the Red Hat Developer Platform, the application is deployed with a remote Qwen3 14-B model running on Red Hat's Model-as-a-Service platform (MaaS) with Intel's Gaudi accelerator. If you deploy this quickstart on your cluster, you must provide the endpoint and credentials for the endpoint of your inference server.
 
 **"How do we prevent training-serving skew in production?"**
 → Module 2 demonstrates using the FEAST feature store to maintain consistent user and product features across training and inference

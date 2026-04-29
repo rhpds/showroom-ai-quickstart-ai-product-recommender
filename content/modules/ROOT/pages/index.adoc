@@ -26,7 +26,7 @@ Before starting this workshop, you should have:
 * Basic understanding of machine learning concepts and AI models
 * Familiarity with Kubernetes and containerization
 * Experience with Python programming
-* Access to Red Hat OpenShift AI environment
+* Access to Red Hat OpenShift AI environment (this is provided for you automatically if you started this showroom on the Red Hat Developer Platform!)
 
 == Workshop environment
 
@@ -48,4 +48,4 @@ You can work at your own pace.
 
 == Let's get started!
 
-Click on **Workshop Overview** in the navigation to begin your learning journey.
+Login to the console using the above credentials and the login screen you see on the right. 

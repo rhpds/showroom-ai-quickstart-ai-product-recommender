@@ -85,7 +85,7 @@ The product recommender deploys these models via KServe:
 |===
 |Model |Purpose |Runtime
 
-|Llama 3.1 8B, NVIDIA Nemotron Nano or Qwen3-14B via MaaS (Red Hat's Model-as-a-Service)
+|Llama 3.1 8B or Qwen3-14B via MaaS (Red Hat's Model-as-a-Service)
 |Generate product review summaries
 |vLLM NVIDIA GPU or (Intel Gaudi on Maas) ServingRuntime
 
@@ -374,55 +374,7 @@ Questions to confirm understanding:
 
 **Solution**:
 
-. Check if product has at least 4 reviews (minimum requirement)
-. Verify Llama model deployment: `oc get inferenceservice`
-. Check model endpoint is accessible and has valid authentication
-. Review backend logs for LLM connection errors: `oc logs <backend-pod>`
-
-**Issue**: Review summary seems generic or low quality
-
-**Solution**:
-
-. Check if enough reviews were sampled (review count in database)
-. Verify weighted stratified sampling is capturing rating distribution
-. Increase sample budget if context window allows
-. Check prompt template for clarity and specificity
-
-**Issue**: LLM requests timing out or failing
-
-**Solution**:
-
-. Check GPU availability: `oc get pod -o wide` (verify GPU nodes)
-. Verify vLLM pod has sufficient memory
-. Review model resource limits and requests
-. Check if multiple concurrent requests are overwhelming the instance
-
-**Issue**: Inference endpoint returns 404 or connection refused
-
-**Solution**:
-
-. Verify KServe route is created: `oc get route`
-. Check inference service is ready: `oc get inferenceservice`
-. Ensure model loaded successfully: review pod logs
-. Verify authentication token if required
-
-**Issue**: New user sees no recommendations after registration
-
-**Solution**:
-
-. Check if categories were properly saved to database
-. Verify products exist in selected categories
-. Review popularity scoring logic (ensure products have ratings/purchases)
-. Check backend logs for database query errors
-
-**Issue**: Understanding context window vs VRAM capacity
-
-**Solution**:
-
-. **VRAM** = total GPU memory (e.g., 24 GB on A10G)
-. **Model weights** take most VRAM (17 GB for Llama 3.1 8B)
-. **Remaining VRAM** available for context (7 GB → ~14k tokens)
-. **Context window** = maximum tokens model can process (theoretical 128k, practical 14k)
+. Use the admin console or command ine to review backend logs for LLM connection errors: `oc logs product-recommender-system-frontend-backend`
 
 == Learning outcomes
 

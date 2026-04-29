@@ -170,7 +170,7 @@ Vector('Trail Hiker's Backpack') + Vector('Upgrade') ≈ Vector('Mountaineer's B
 
 Neural networks learn these embedding spaces through **contrastive learning** -- processing pairs of similar and dissimilar inputs until related items cluster together.
 
-=== Why different architectures matter
+=== Why different model architectures matter
 
 You might wonder: "Why not use one model for everything?"
 
@@ -279,42 +279,6 @@ Questions to confirm understanding:
 . Check that pods are running: `oc get pods`
 . Review route status: `oc get routes`
 . Check application logs: `oc logs <pod-name>`
-
-**Issue**: Search results seem irrelevant or incorrect
-
-**Solution**:
-
-. Embeddings may not be loaded -- check if pipeline has run
-. Verify feature store contains product embeddings
-. Review pipeline logs for embedding generation errors
-. Confirm BGE model is deployed and accessible
-
-**Issue**: AI summarize button doesn't work
-
-**Solution**:
-
-. Check if the LLM model is deployed: `oc get inferenceservice`
-. Verify model endpoint is accessible
-. Check if product has at least 4 reviews (minimum for summarization)
-. Review backend logs for LLM connection errors
-
-**Issue**: Understanding embedding dimensions
-
-**Solution**:
-
-. Embedding dimensions are fixed by model architecture
-. BGE-small uses 384 dimensions
-. More dimensions capture more nuance but require more storage/compute
-. Don't try to change dimensions -- they're learned during pre-training
-
-**Issue**: Confused about when to use encoder vs decoder models
-
-**Solution**:
-
-. Need to search or compare items? → **Use encoder** (creates embeddings)
-. Need to generate new text? → **Use decoder** (LLM)
-. Need coordinated representations for 2 entities? → **Use dual-encoder**
-. Reference the model table in Exercise 2 for examples
 
 == Learning outcomes
 

@@ -66,7 +66,7 @@ All components are pre-configured and ready to use:
 
 === Setup validation
 
-You can verify your environment is ready by accessing:
+If you are not already logged in to the console on the right, you can verify your environment is ready by accessing:
 
 * OpenShift console: `{openshift_console_url}`
 * Login with credentials: `{user}` / `{password}`
@@ -129,10 +129,9 @@ The workshop guides you through exploring these components in each module.
 
 **Hands-on activities**:
 
-* Deploy models with KServe
 * Test product recommendations
 * Generate review summaries with LLM
-* Monitor inference performance
+* Interact with the OpenShift Pipeline Server
 
 == Troubleshooting guide
 

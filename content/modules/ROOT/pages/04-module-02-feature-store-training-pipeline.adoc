@@ -191,7 +191,7 @@ def load_data_from_feast(
     interactions.to_parquet(interaction_df_output.path)
 ----
 
-The `@dsl.component` decorator tells KFP:
+The `@dsl.component` decorator and function signature tell KFP:
 
 * **Base image** -- container image to use
 * **Packages** -- Python dependencies to install
@@ -264,6 +264,58 @@ The dashboard shows:
 * **Execution logs** -- stdout/stderr from each component
 * **Artifacts** -- input/output datasets and models
 * **Run metrics** -- duration, resource usage
+
+=== Understanding pipeline pods
+
+When you submit a compiled pipeline to the cluster, KFP creates multiple ephemeral pods to execute your workflow. Understanding these pods is essential for troubleshooting pipeline issues.
+
+The code that submits a pipeline will result in several pods being created. This can be confusing when you're debugging. Here's what each pod does:
+
+|===
+|Pod name |Function |Count
+
+|kfp-run-job
+|Runs the `__main__` code in your `train-workflow.py`, which compiles and submits the pipeline to the pipeline service in OpenShift
+|1
+
+|train-workflow-`id`-system-dag-driver
+|Responsible for coordinating all tasks in their proper execution order
+|1
+
+|train-workflow-`id`-system-container-driver
+|Created for each pipeline task. Provides critical functions including creation and submission of pod specifications for each task, pod monitoring, retry logic implementation, and management of each task's output data
+|3 (1 per task in this pipeline)
+
+|train-workflow-`id`-system-container-impl
+|This is where your task-specific code actually executes
+|3 (1 per task in this pipeline)
+|===
+
+**Note**: The `id` portion of pod names is replaced with random strings during execution to ensure uniqueness.
+
+**Why this matters for troubleshooting**:
+
+* If you see pod failures, knowing which type helps diagnose the issue
+* `container-impl` pods run your code -- check these logs for application errors
+* `container-driver` pods handle orchestration -- check these for scheduling or resource issues
+* `dag-driver` manages execution order -- check this if tasks run in wrong sequence
+
+You can list all pipeline pods with:
+
+[source,bash]
+----
+oc get pods | grep train-workflow
+----
+
+You can also view all pods in the OpenShift console on the right:
+
+*Step 1:* Make sure you are at the Projects page of the console. Click the Red Hat logo at the top if you are not.
+
+*Step 2:* Click the hamburger icon on the top left.
+
+*Step 3:* Click on Workloads | Pods. If you see a security exception, make sure your project is selected in the drop-down at the top (the project name starts with your user ID)
+
+*Step 4:* The list of pods and their statuses is shown. Now click on one of the pods that starts with 'train-workflow'. The Pod details page appears. You can learn more about the pod's execution by clicking on Logs or Events at the top.
 
 === Verify
 
@@ -419,46 +471,21 @@ Expected understanding:
 
 **Solution**:
 
-. Check FEAST connectivity: verify feature store is accessible
-. Review feature view definitions: ensure schemas match data sources
-. Inspect offline store: confirm Parquet files exist and are readable
-. Check component logs: `oc logs <load-data-pod-name>`
+. Review the 'Understanding pipeline pods' section earlier to troubleshoot potential FEAST connectivity errors, missing files and other problems.
 
 **Issue**: Model training fails with out-of-memory errors
 
 **Solution**:
 
-. Reduce batch size in training configuration
-. Increase memory limits for training pod
-. Check if dataset fits in available memory
-. Consider streaming data instead of loading all at once
+. Ensure your pods have sufficient ephemeral storage, memory and cpu resources
+. Fine tune the training pipeline for your environment (explore the showroom's accompanying blog to learn more)
 
 **Issue**: Pipeline shows success but no recommendations appear
 
 **Solution**:
 
 . Verify "generate candidates" stage completed
-. Check FEAST online store: `feast materialize` sync may be needed
 . Inspect candidate generation logs for errors
-. Query PostgreSQL directly to confirm recommendations were written
-
-**Issue**: Embeddings seem random or low quality
-
-**Solution**:
-
-. Verify BGE model is correctly preprocessing text features
-. Check magnitude scoring: scores should reflect interaction strength
-. Increase training epochs: model may need more iterations
-. Review training loss curve: should decrease over time
-
-**Issue**: Understanding the difference between FEAST offline and online stores
-
-**Solution**:
-
-. **Offline** = historical batch data for training (Parquet)
-. **Online** = recent/current values for inference (PostgreSQL)
-. Materialization syncs offline → online
-. Training reads from offline, inference reads from online
 
 **Issue**: Pipeline components fail to find input data
 
@@ -468,6 +495,7 @@ Expected understanding:
 . Verify `.after()` chains enforce correct execution order
 . Inspect MinIO buckets: confirm files were copied
 . Review KFP init container logs for transfer errors
+. Learn more about these troubleshooting steps from the accompanying developer blog here: https://developers.redhat.com/articles/2026/01/20/ai-quickstart-product-recommender-openshift-ai
 
 == Learning outcomes
 
